@@ -18,8 +18,14 @@ const AddEvent: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
 
-    const [formData, setFormData] = useState({
-        eventType: 1, // Shipment = 1
+    const [formData, setFormData] = useState<{
+        eventType: EventType;
+        notes: string;
+        location: string;
+        qualityScore: string;
+        certificateHash: string;
+    }>({
+        eventType: 1 as EventType, // ← force it to be EventType
         notes: '',
         location: '',
         qualityScore: '',
@@ -83,11 +89,14 @@ const AddEvent: React.FC = () => {
         }
     };
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const handleInputChange = (
+        e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+    ) => {
         const { name, value } = e.target;
+
         setFormData(prev => ({
             ...prev,
-            [name]: value
+            [name]: name === 'eventType' ? Number(value) as EventType : value
         }));
     };
 
