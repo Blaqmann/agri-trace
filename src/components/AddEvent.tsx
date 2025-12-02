@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAppContext } from '../contexts/AppContext';
 import { blockchainService } from '../services/blockchain';
-import { EventType, Role, type Batch } from '../types';
+import { EventType, type Batch } from '../types';
 
 const AddEvent: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -19,7 +19,7 @@ const AddEvent: React.FC = () => {
     const [success, setSuccess] = useState<string | null>(null);
 
     const [formData, setFormData] = useState({
-        eventType: EventType.Shipment,
+        eventType: 1, // Shipment = 1
         notes: '',
         location: '',
         qualityScore: '',
@@ -91,19 +91,19 @@ const AddEvent: React.FC = () => {
         }));
     };
 
-    // Get available event types based on user role
     const getAvailableEventTypes = () => {
         if (!userProfile) return [];
 
         const allEvents = [
-            { value: EventType.Shipment, label: 'Shipment', roles: [Role.Aggregator] },
-            { value: EventType.Processing, label: 'Processing', roles: [Role.Processor] },
-            { value: EventType.QualityCheck, label: 'Quality Check', roles: [Role.Processor, Role.Regulator] },
-            { value: EventType.Sale, label: 'Sale', roles: [Role.Retailer] }
+            { value: EventType.Shipment, label: 'Shipment', roles: [1] }, // ← Use numbers!
+            { value: EventType.Processing, label: 'Processing', roles: [2] },
+            { value: EventType.QualityCheck, label: 'Quality Check', roles: [2, 4] },
+            { value: EventType.Sale, label: 'Sale', roles: [3] },
         ];
 
+        // Compare numbers directly
         return allEvents.filter(event =>
-            event.roles.includes(userProfile.role)
+            event.roles.includes(userProfile.role) // now both are numbers → works perfectly
         );
     };
 
@@ -222,8 +222,8 @@ const AddEvent: React.FC = () => {
                             />
                         </div>
 
-                        {/* Quality Score (for Quality Check only) */}
-                        {formData.eventType === EventType.QualityCheck && (
+                        {/* Quality Score & Certificate — only show for QualityCheck */}
+                        {formData.eventType === 3 && (  // ← Use the number 3 instead of EventType.QualityCheck
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Quality Score (1-10)
@@ -241,8 +241,7 @@ const AddEvent: React.FC = () => {
                             </div>
                         )}
 
-                        {/* Certificate Hash (for Quality Check only) */}
-                        {formData.eventType === EventType.QualityCheck && (
+                        {formData.eventType === 3 && (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Certificate Reference

@@ -1,6 +1,3 @@
-/* eslint-disable */
-
-
 // src/services/firebase.ts
 import { initializeApp } from 'firebase/app';
 import {
@@ -11,7 +8,7 @@ import {
   serverTimestamp,
   Timestamp
 } from 'firebase/firestore';
-import { type UserProfile, Role } from '../types';
+import { type UserProfile } from '../types';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,

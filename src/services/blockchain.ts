@@ -12,11 +12,7 @@ const SUPPLY_CHAIN_ABI = [
     "function recordEvent(uint256 _batchId, uint8 _eventType, string memory _dataHash) external",
     "function getBatch(uint256 _batchId) external view returns (uint256, address, string memory, uint256)",
     "function getBatchHistoryCount(uint256 _batchId) external view returns (uint256)",
-    // "function getBatchEvent(uint256 _batchId, uint256 _index) external view returns (uint8, address, uint256, string memory)",
-    // "function getBatchEvent(uint256 _batchId, uint256 _index) external view returns (uint8 eventType, address actor, uint256 timestamp, string memory dataHash)",
-    // "function getBatchEvent(uint256,uint256) external view returns (uint8,address,uint256,string)",
     "function getBatchEvent(uint256 _batchId, uint256 _index) external view returns ((uint8,address,uint256,string) memory)",
-    // Changed back to tuple
     "function nextBatchId() external view returns (uint256)",
     "event BatchCreated(uint256 indexed batchId, address indexed creator, string productType)",
     "event EventRecorded(uint256 indexed batchId, uint8 eventType, address indexed actor, string dataHash)"
