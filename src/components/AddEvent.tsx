@@ -1,5 +1,4 @@
 /* eslint-disable */
-
 // src/components/AddEvent.tsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -18,6 +17,7 @@ const AddEvent: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
 
+    // Initial form state — eventType will be set dynamically
     const [formData, setFormData] = useState<{
         eventType: EventType;
         notes: string;
@@ -25,7 +25,7 @@ const AddEvent: React.FC = () => {
         qualityScore: string;
         certificateHash: string;
     }>({
-        eventType: 1 as EventType, // ← force it to be EventType
+        eventType: EventType.Shipment, // temporary placeholder
         notes: '',
         location: '',
         qualityScore: '',
@@ -38,7 +38,6 @@ const AddEvent: React.FC = () => {
 
     const loadBatchData = async () => {
         if (!id) return;
-
         setLoading(true);
         try {
             const batchData = await blockchainService.getBatch(parseInt(id));
@@ -50,6 +49,19 @@ const AddEvent: React.FC = () => {
         }
     };
 
+    // Set default event type based on user's allowed events
+    useEffect(() => {
+        if (userProfile) {
+            const available = getAvailableEventTypes();
+            if (available.length > 0) {
+                setFormData(prev => ({
+                    ...prev,
+                    eventType: available[0].value // First allowed event as default
+                }));
+            }
+        }
+    }, [userProfile]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!id || !userProfile) return;
@@ -59,7 +71,6 @@ const AddEvent: React.FC = () => {
         setSuccess(null);
 
         try {
-            // Prepare data hash
             const dataHash = JSON.stringify({
                 notes: formData.notes,
                 location: formData.location,
@@ -69,19 +80,14 @@ const AddEvent: React.FC = () => {
                 role: userProfile.role
             });
 
-            // Record event
             await blockchainService.recordEvent(parseInt(id), formData.eventType, dataHash);
 
-            // Add debug logging
-            console.log('Event recorded, batch ID:', id);
-            const events = await blockchainService.getBatchHistory(parseInt(id));
-            console.log('Events after recording:', events); // Check if this includes the new event
+            console.log('Event recorded:', { batchId: id, eventType: formData.eventType });
 
             setSuccess('Event recorded successfully!');
             setTimeout(() => {
                 navigate(`/batch/${id}`);
             }, 2000);
-
         } catch (err: any) {
             setError(err.message || 'Failed to record event');
         } finally {
@@ -93,7 +99,6 @@ const AddEvent: React.FC = () => {
         e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
     ) => {
         const { name, value } = e.target;
-
         setFormData(prev => ({
             ...prev,
             [name]: name === 'eventType' ? Number(value) as EventType : value
@@ -104,17 +109,38 @@ const AddEvent: React.FC = () => {
         if (!userProfile) return [];
 
         const allEvents = [
-            { value: EventType.Shipment, label: 'Shipment', roles: [1] }, // ← Use numbers!
-            { value: EventType.Processing, label: 'Processing', roles: [2] },
-            { value: EventType.QualityCheck, label: 'Quality Check', roles: [2, 4] },
-            { value: EventType.Sale, label: 'Sale', roles: [3] },
+            { value: EventType.Shipment, label: 'Shipment', roles: [1] },         // Aggregator
+            { value: EventType.Processing, label: 'Processing', roles: [2] },     // Processor
+            { value: EventType.QualityCheck, label: 'Quality Check', roles: [2, 4] }, // Processor & Regulator
+            { value: EventType.Sale, label: 'Sale', roles: [3] },                // Retailer
         ];
 
-        // Compare numbers directly
-        return allEvents.filter(event =>
-            event.roles.includes(userProfile.role) // now both are numbers → works perfectly
-        );
+        return allEvents.filter(event => event.roles.includes(userProfile.role));
     };
+
+    const availableEvents = getAvailableEventTypes();
+
+    // Safeguard: no permissions
+    if (userProfile && availableEvents.length === 0) {
+        return (
+            <div className="max-w-2xl mx-auto py-16 text-center">
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-8 inline-block">
+                    <h3 className="text-xl font-semibold text-yellow-900 mb-4">
+                        No Permission
+                    </h3>
+                    <p className="text-yellow-800">
+                        Your role does not allow recording any events for batches.
+                    </p>
+                    <button
+                        onClick={() => navigate('/')}
+                        className="mt-6 px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg"
+                    >
+                        Back to Dashboard
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     if (loading) {
         return (
@@ -141,8 +167,6 @@ const AddEvent: React.FC = () => {
             </div>
         );
     }
-
-    const availableEvents = getAvailableEventTypes();
 
     return (
         <div className="max-w-2xl mx-auto">
@@ -196,7 +220,7 @@ const AddEvent: React.FC = () => {
                                 ))}
                             </select>
                             <p className="mt-1 text-sm text-gray-500">
-                                Available events based on your role: {userProfile?.role}
+                                Available based on your role ({userProfile?.role})
                             </p>
                         </div>
 
@@ -231,47 +255,47 @@ const AddEvent: React.FC = () => {
                             />
                         </div>
 
-                        {/* Quality Score & Certificate — only show for QualityCheck */}
-                        {formData.eventType === 3 && (  // ← Use the number 3 instead of EventType.QualityCheck
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Quality Score (1-10)
-                                </label>
-                                <input
-                                    type="number"
-                                    name="qualityScore"
-                                    value={formData.qualityScore}
-                                    onChange={handleInputChange}
-                                    min="1"
-                                    max="10"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                    placeholder="e.g., 8"
-                                />
-                            </div>
-                        )}
+                        {/* Quality Check Specific Fields */}
+                        {formData.eventType === EventType.QualityCheck && (
+                            <>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Quality Score (1-10)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        name="qualityScore"
+                                        value={formData.qualityScore}
+                                        onChange={handleInputChange}
+                                        min="1"
+                                        max="10"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                        placeholder="e.g., 8"
+                                    />
+                                </div>
 
-                        {formData.eventType === 3 && (
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Certificate Reference
-                                </label>
-                                <input
-                                    type="text"
-                                    name="certificateHash"
-                                    value={formData.certificateHash}
-                                    onChange={handleInputChange}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                    placeholder="e.g., Certificate ID or reference"
-                                />
-                            </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Certificate Reference (optional)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="certificateHash"
+                                        value={formData.certificateHash}
+                                        onChange={handleInputChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                        placeholder="e.g., Certificate ID, IPFS hash, or reference number"
+                                    />
+                                </div>
+                            </>
                         )}
                     </div>
 
                     <div className="mt-8">
                         <button
                             type="submit"
-                            disabled={submitting}
-                            className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center space-x-2"
+                            disabled={submitting || availableEvents.length === 0}
+                            className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
                         >
                             {submitting ? (
                                 <>

@@ -57,6 +57,7 @@ const BatchCreation: React.FC = () => {
         );
     }
 
+    // In BatchCreation.tsx, update the handleSubmit function:
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -69,9 +70,12 @@ const BatchCreation: React.FC = () => {
                 await blockchainService.connect();
             }
 
+            console.log('Starting batch creation...');
+
             // Create batch on blockchain
             const newBatchId = await blockchainService.createBatch(formData.productType);
 
+            console.log('Batch created with ID:', newBatchId);
             setBatchId(newBatchId);
             setSuccess(`Batch created successfully! Batch ID: ${newBatchId}`);
 
@@ -103,8 +107,16 @@ const BatchCreation: React.FC = () => {
             }
 
         } catch (err: any) {
-            setError(err.message || 'Failed to create batch. Please try again.');
-            console.error('Batch creation error:', err);
+            console.error('Batch creation error details:', err);
+
+            // Check if it's just the batch ID parsing error
+            if (err.message.includes('batchId.toNumber') || err.message.includes('batch ID')) {
+                // The batch was created but we couldn't get the ID
+                setSuccess('Batch created successfully! The transaction was confirmed on the blockchain.');
+                setError('Note: Could not retrieve batch ID automatically. Please check your dashboard for the new batch.');
+            } else {
+                setError(err.message || 'Failed to create batch. Please try again.');
+            }
         } finally {
             setLoading(false);
         }

@@ -93,8 +93,40 @@ export class BlockchainService {
             // Now safe to access args
             const batchId = parsedLog.args.batchId;
 
-            // batchId is usually a BigNumber, so convert to number/string if needed
-            return batchId.toNumber(); // or batchId.toString() if it can be large
+            // Handle different possible types
+            let batchIdNumber: number;
+
+            if (typeof batchId === 'bigint') {
+                // It's a BigInt
+                batchIdNumber = Number(batchId);
+            } else if (batchId?.toNumber) {
+                // It's a BigNumber
+                batchIdNumber = batchId.toNumber();
+            } else if (batchId?.toString) {
+                // It has a toString method (BigNumber or similar)
+                batchIdNumber = parseInt(batchId.toString(), 10);
+            } else if (typeof batchId === 'number') {
+                // Already a number
+                batchIdNumber = batchId;
+            } else if (typeof batchId === 'string') {
+                // It's a string
+                batchIdNumber = parseInt(batchId, 10);
+            } else {
+                // Unknown type, try to convert
+                batchIdNumber = Number(batchId);
+            }
+
+            // Validate the batch ID
+            if (isNaN(batchIdNumber) || batchIdNumber <= 0) {
+                console.warn('Invalid batch ID returned, trying alternative method...');
+
+                // Alternative: Get the latest batch ID from the contract
+                const nextId = await this.contract.nextBatchId();
+                batchIdNumber = Number(nextId) - 1; // The just created batch ID
+            }
+
+            return batchIdNumber;
+
         } catch (err: any) {
             if (err.message.includes('Not connected to blockchain')) {
                 throw new Error('Please connect your wallet first');
@@ -162,28 +194,17 @@ export class BlockchainService {
                 return [];
             }
 
-            console.log(`Fetching history for batch ${batchId}...`);
-
             try {
                 const eventCount = await this.contract.getBatchHistoryCount(batchId);
-                console.log(`Batch ${batchId} has ${eventCount} events`);
 
                 const events: SupplyChainEvent[] = [];
 
                 for (let i = 0; i < eventCount; i++) {
                     try {
-                        console.log(`Fetching event ${i} for batch ${batchId}...`);
                         const result = await this.contract.getBatchEvent(batchId, i);
-                        console.log(`Event ${i} result:`, result);
 
                         if (Array.isArray(result) && result.length >= 4) {
                             const [eventType, actor, timestamp, dataHash] = result;
-                            console.log(`Parsed event ${i}:`, {
-                                eventType: Number(eventType),
-                                actor,
-                                timestamp: Number(timestamp),
-                                dataHash
-                            });
 
                             events.push({
                                 eventType: Number(eventType) as EventType,
@@ -198,7 +219,6 @@ export class BlockchainService {
                     }
                 }
 
-                console.log(`Total events loaded for batch ${batchId}:`, events.length);
                 return events;
             } catch (historyError: any) {
                 console.error(`Error getting event count for batch ${batchId}:`, historyError);
