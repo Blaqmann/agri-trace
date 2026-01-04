@@ -285,7 +285,7 @@ const BatchView: React.FC = () => {
                                         <p className="mt-1 text-gray-900 font-medium">{formatTimestamp(selectedEvent.timestamp)}</p>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-600">Recorded By (Actor)</label>
+                                        <label className="block text-sm font-medium text-gray-600">Wallet Address</label>
                                         <p className="mt-1 text-gray-900 font-mono">{formatAddress(selectedEvent.actor)}</p>
                                     </div>
                                     <div>
@@ -333,12 +333,33 @@ const BatchView: React.FC = () => {
                                             )}
                                             {parsedEventData.recordedBy && (
                                                 <div>
-                                                    <label className="block text-sm font-medium text-gray-600">Recorded By (Name)</label>
+                                                    <label className="block text-sm font-medium text-gray-600">Username</label>
                                                     <p className="mt-1 text-gray-900">{parsedEventData.recordedBy}</p>
+                                                </div>
+                                            )}
+                                            {parsedEventData.role !== undefined && (
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-600">Role</label>
+                                                    <p className="mt-1 text-gray-900 font-medium">
+                                                        {(() => {
+                                                            const roleMap: Record<number, string> = {
+                                                                0: 'Farmer',
+                                                                1: 'Aggregator',
+                                                                2: 'Processor',
+                                                                3: 'Retailer',
+                                                                4: 'Regulator',
+                                                            };
+                                                            return roleMap[parsedEventData.role] || 'Unknown Role';
+                                                        })()}
+                                                    </p>
                                                 </div>
                                             )}
                                         </div>
                                     </div>
+                                )}
+
+                                {parsedEventData && Object.keys(parsedEventData).length === 0 && (
+                                    <p className="text-gray-500 italic">No additional data recorded for this event.</p>
                                 )}
 
                                 {parsedEventData && Object.keys(parsedEventData).length === 0 && (
